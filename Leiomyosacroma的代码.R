@@ -10,7 +10,7 @@ library(dplyr)
 library(ggrepel)
 library(WGCNA)
 #DGE analysis
-Leiomyosarcoma_top_table<- read.delim("GSE64763.top.table.tsv", header = TRUE, sep = "\t")
+Leiomyosarcoma_top_table<- read.delim("GSE.top.table.tsv", header = TRUE, sep = "\t")
 Leiomyosarcoma_top_table$diffexpressed <- "NS"
 Leiomyosarcoma_top_table$diffexpressed[Leiomyosarcoma_top_table$adj.P.Val< 0.05 & Leiomyosarcoma_top_table$logFC > 1] <- "Up"
 Leiomyosarcoma_top_table$diffexpressed[Leiomyosarcoma_top_table$adj.P.Val< 0.05 & Leiomyosarcoma_top_table$logFC< -1] <- "Down"
@@ -55,7 +55,7 @@ write.csv(DEG10,
           row.names = FALSE,
           quote = FALSE)
 #WGCNA
-T1D_gset <- getGEO('GSE64763', destdir=".",AnnotGPL = T,getGPL = T)
+T1D_gset <- getGEO('GSE', destdir=".",AnnotGPL = T,getGPL = T)
 T1D_exp<-exprs(T1D_gset[[1]])
 T1D_GPL<-fData(T1D_gset[[1]])
 T1D_gpl<- T1D_GPL[, c(1, 3)]
