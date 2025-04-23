@@ -10,7 +10,7 @@ library(dplyr)
 library(ggrepel)
 library(WGCNA)
 #DGE analysis
-Tumor_top_table<- read.delim("GSE38228.top.table.tsv", header = TRUE, sep = "\t")
+Tumor_top_table<- read.delim("GSE.top.table.tsv", header = TRUE, sep = "\t")
 Tumor_top_table$diffexpressed <- "NS"
 Tumor_top_table$diffexpressed[Tumor_top_table$adj.P.Val< 0.05 & Tumor_top_table$logFC > 1] <- "Up"
 Tumor_top_table$diffexpressed[Tumor_top_table$adj.P.Val< 0.05 & Tumor_top_table$logFC< -1] <- "Down"
@@ -55,7 +55,7 @@ write.csv(DEG39,
           row.names = FALSE,
           quote = FALSE)
 #WGCNA
-T1D_gset <- getGEO('GSE38228', destdir=".",AnnotGPL = T,getGPL = T)
+T1D_gset <- getGEO('GSE', destdir=".",AnnotGPL = T,getGPL = T)
 T1D_exp<-exprs(T1D_gset[[1]])
 T1D_GPL<-fData(T1D_gset[[1]])
 T1D_gpl<- T1D_GPL[, c(1, 3)]
