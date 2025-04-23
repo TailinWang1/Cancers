@@ -10,7 +10,7 @@ library(dplyr)
 library(ggrepel)
 library(WGCNA)
 #DGE analysis
-Acute_myeloid_leukemia_top_table<- read.delim("GSE9476.top.table.tsv", header = TRUE, sep = "\t")
+Acute_myeloid_leukemia_top_table<- read.delim("GSE.top.table.tsv", header = TRUE, sep = "\t")
 Acute_myeloid_leukemia_top_table$diffexpressed <- "NS"
 Acute_myeloid_leukemia_top_table$diffexpressed[Acute_myeloid_leukemia_top_table$adj.P.Val < 0.05 & Acute_myeloid_leukemia_top_table$logFC > 1] <- "Up"
 Acute_myeloid_leukemia_top_table$diffexpressed[Acute_myeloid_leukemia_top_table$adj.P.Val< 0.05 & Acute_myeloid_leukemia_top_table$logFC< -1] <- "Down"
@@ -54,7 +54,7 @@ write.csv(DEG01,
           row.names = FALSE,
           quote = FALSE)
 #WGCNA analysis
-T1D_gset <- getGEO('GSE9476', destdir=".",AnnotGPL = T,getGPL = T)
+T1D_gset <- getGEO('GSE', destdir=".",AnnotGPL = T,getGPL = T)
 T1D_exp<-exprs(T1D_gset[[1]])
 T1D_GPL<-fData(T1D_gset[[1]])
 T1D_gpl<- T1D_GPL[, c(1, 3)]
