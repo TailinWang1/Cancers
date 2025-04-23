@@ -10,7 +10,7 @@ library(dplyr)
 library(ggrepel)
 library(WGCNA)
 #DGE analysis
-Soft_Sarcoma_top_table<- read.delim("GSE2719.top.table.tsv", header = TRUE, sep = "\t")
+Soft_Sarcoma_top_table<- read.delim("GSE.top.table.tsv", header = TRUE, sep = "\t")
 Soft_Sarcoma_top_table$diffexpressed <- "NS"
 Soft_Sarcoma_top_table$diffexpressed[Soft_Sarcoma_top_table$adj.P.Val< 0.05 & Soft_Sarcoma_top_table$logFC > 1] <- "Up"
 Soft_Sarcoma_top_table$diffexpressed[Soft_Sarcoma_top_table$adj.P.Val< 0.05 & Soft_Sarcoma_top_table$logFC< -1] <- "Down"
@@ -56,7 +56,7 @@ write.csv(DEG09,
           row.names = FALSE,
           quote = FALSE)
 #WGCNA
-T1D_gset <- getGEO('GSE2719', destdir=".",AnnotGPL = T,getGPL = T)
+T1D_gset <- getGEO('GSE', destdir=".",AnnotGPL = T,getGPL = T)
 T1D_exp<-exprs(T1D_gset[[1]])
 T1D_GPL<-fData(T1D_gset[[1]])
 T1D_gpl<- T1D_GPL[, c(1, 3)]
