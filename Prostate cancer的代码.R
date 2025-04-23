@@ -10,7 +10,7 @@ library(dplyr)
 library(ggrepel)
 library(WGCNA)
 #DGE analysis
-Prostate_cancer_top_table<- read.delim("GSE8511.top.table.tsv", header = TRUE, sep = "\t")
+Prostate_cancer_top_table<- read.delim("GSE.top.table.tsv", header = TRUE, sep = "\t")
 Prostate_cancer_top_table$diffexpressed <- "NS"
 Prostate_cancer_top_table$diffexpressed[Prostate_cancer_top_table$adj.P.Val< 0.05 & Prostate_cancer_top_table$logFC > 1] <- "Up"
 Prostate_cancer_top_table$diffexpressed[Prostate_cancer_top_table$adj.P.Val< 0.05 & Prostate_cancer_top_table$logFC< -1] <- "Down"
@@ -54,7 +54,7 @@ write.csv(DEG29,
           row.names = FALSE,
           quote = FALSE)
 #WGCNA
-T1D_gset <- getGEO('GSE8511', destdir=".",AnnotGPL = T,getGPL = T)
+T1D_gset <- getGEO('GSE', destdir=".",AnnotGPL = T,getGPL = T)
 T1D_exp<-exprs(T1D_gset[[1]])
 T1D_GPL<-fData(T1D_gset[[1]])
 T1D_gpl<- T1D_GPL[, c(1, 3)]
