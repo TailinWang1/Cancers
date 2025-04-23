@@ -10,7 +10,7 @@ library(dplyr)
 library(ggrepel)
 library(WGCNA)
 #DGE analysis
-Gastric_cancer_top_table<- read.delim("GSE2685.top.table.tsv", header = TRUE, sep = "\t")
+Gastric_cancer_top_table<- read.delim("GSE.top.table.tsv", header = TRUE, sep = "\t")
 Gastric_cancer_top_table$diffexpressed <- "NS"
 Gastric_cancer_top_table$diffexpressed[Gastric_cancer_top_table$adj.P.Val< 0.05 & Gastric_cancer_top_table$logFC > 1] <- "Up"
 Gastric_cancer_top_table$diffexpressed[Gastric_cancer_top_table$adj.P.Val< 0.05 & Gastric_cancer_top_table$logFC< -1] <- "Down"
@@ -56,7 +56,7 @@ write.csv(DEG12,
           row.names = FALSE,
           quote = FALSE)
 #WGCNA
-T1D_gset <- getGEO('GSE2685', destdir=".",AnnotGPL = T,getGPL = T)
+T1D_gset <- getGEO('GSE', destdir=".",AnnotGPL = T,getGPL = T)
 T1D_exp<-exprs(T1D_gset[[1]])
 T1D_GPL<-fData(T1D_gset[[1]])
 T1D_gpl<- T1D_GPL[, c(1, 3)]
