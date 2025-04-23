@@ -10,7 +10,7 @@ library(dplyr)
 library(ggrepel)
 library(WGCNA)
 #DGE analysis
-Bladder_cancer_top_table<- read.delim("GSE37815.top.table.tsv", header = TRUE, sep = "\t")
+Bladder_cancer_top_table<- read.delim("GSE.top.table.tsv", header = TRUE, sep = "\t")
 Bladder_cancer_top_table$diffexpressed <- "NS"
 Bladder_cancer_top_table$diffexpressed[Bladder_cancer_top_table$adj.P.Val < 0.05 & Bladder_cancer_top_table$logFC > 1] <- "Up"
 Bladder_cancer_top_table$diffexpressed[Bladder_cancer_top_table$adj.P.Val< 0.05 & Bladder_cancer_top_table$logFC< -1] <- "Down"
@@ -54,7 +54,7 @@ write.csv(DEG02,
           row.names = FALSE,
           quote = FALSE)
 #WGCNA
-T1D_gset <- getGEO('GSE37815', destdir=".",AnnotGPL = T,getGPL = T)
+T1D_gset <- getGEO('GSE', destdir=".",AnnotGPL = T,getGPL = T)
 T1D_exp<-exprs(T1D_gset[[1]])
 T1D_GPL<-fData(T1D_gset[[1]])
 T1D_gpl<- T1D_GPL[, c(1, 3)]
