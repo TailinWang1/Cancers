@@ -10,7 +10,7 @@ library(dplyr)
 library(ggrepel)
 library(WGCNA)
 #DGE analysis
-Cholangiocarcinoma_top_table<- read.delim("GSE22633.top.table.tsv", header = TRUE, sep = "\t")
+Cholangiocarcinoma_top_table<- read.delim("GSE.top.table.tsv", header = TRUE, sep = "\t")
 Cholangiocarcinoma_top_table$diffexpressed <- "NS"
 Cholangiocarcinoma_top_table$diffexpressed[Cholangiocarcinoma_top_table$adj.P.Val< 0.05 & Cholangiocarcinoma_top_table$logFC > 1] <- "Up"
 Cholangiocarcinoma_top_table$diffexpressed[Cholangiocarcinoma_top_table$adj.P.Val< 0.05 & Cholangiocarcinoma_top_table$logFC< -1] <- "Down"
@@ -56,7 +56,7 @@ write.csv(DEG08,
           row.names = FALSE,
           quote = FALSE)
 #WGCNA
-T1D_gset <- getGEO('GSE22633', destdir=".",AnnotGPL = T,getGPL = T)
+T1D_gset <- getGEO('GSE', destdir=".",AnnotGPL = T,getGPL = T)
 T1D_exp<-exprs(T1D_gset[[1]])
 T1D_GPL<-fData(T1D_gset[[1]])
 T1D_gpl<- T1D_GPL[, c(1, 3)]
