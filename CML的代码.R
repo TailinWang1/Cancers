@@ -10,7 +10,7 @@ library(dplyr)
 library(ggrepel)
 library(WGCNA)
 #DGE analysis
-CML_top_table<- read.delim("GSE5550.top.table.tsv", header = TRUE, sep = "\t")
+CML_top_table<- read.delim("GSE.top.table.tsv", header = TRUE, sep = "\t")
 CML_top_table$diffexpressed <- "NS"
 CML_top_table$diffexpressed[CML_top_table$adj.P.Val< 0.05 & CML_top_table$logFC > 1] <- "Up"
 CML_top_table$diffexpressed[CML_top_table$adj.P.Val< 0.05 & CML_top_table$logFC< -1] <- "Down"
@@ -54,7 +54,7 @@ write.csv(DEG07,
           row.names = FALSE,
           quote = FALSE)
 #WGCNA
-T1D_gset <- getGEO('GSE5550', destdir=".",AnnotGPL = T,getGPL = T)
+T1D_gset <- getGEO('GSE', destdir=".",AnnotGPL = T,getGPL = T)
 T1D_exp<-exprs(T1D_gset[[1]])
 T1D_GPL<-fData(T1D_gset[[1]])
 T1D_gpl<- T1D_GPL[, c(1, 3)]
