@@ -1,0 +1,201 @@
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(tidyr)
+library(RColorBrewer)
+library(glmGamPoi)
+library(harmony)
+library(ggpubr)
+# ==============================================================================
+# 1. Quality Control and Preprocessing
+# ==============================================================================
+
+process_sample <- function(obj) {
+  obj[["percent.mt"]] <- PercentageFeatureSet(obj, pattern = "^MT-")
+  
+  obj <- subset(obj, 
+                subset = nFeature_Spatial > 200 & 
+                         nFeature_Spatial < 8000 & 
+                         percent.mt < 30)
+  
+  # Single-sample normalization for individual plotting
+  obj <- SCTransform(obj, assay = "Spatial", verbose = FALSE, vst.flavor = "v2")
+  return(obj)
+}
+
+message("Processing QC for individual samples...")
+processed_samples <- lapply(seurat_list, process_sample)
+
+# ==============================================================================
+# 2. Spatial Expression Visualization
+# ==============================================================================
+
+genes_of_interest <- c("PLAU", "ERAP1")
+
+create_spatial_plots <- function(sample_list, genes) {
+  plots_list <- list()
+  
+  for(i in seq_along(sample_list)) {
+    sample_name <- names(sample_list)[i]
+    obj <- sample_list[[i]]
+    available_genes <- genes[genes %in% rownames(obj)]
+    
+    if(length(available_genes) > 0) {
+      gene_plots <- lapply(available_genes, function(gene) {
+        SpatialFeaturePlot(obj, features = gene, alpha = 0.8, pt.size.factor = 1.2) +
+          ggtitle(paste0(sample_name, " - ", gene)) +
+          theme(plot.title = element_text(size = 10), legend.position = "right")
+      })
+      plots_list[[sample_name]] <- wrap_plots(gene_plots, ncol = 1)
+    }
+  }
+  return(plots_list)
+}
+
+spatial_plots <- create_spatial_plots(processed_samples, genes_of_interest)
+
+# ==============================================================================
+# 3. Integration and Batch Effect Removal (Harmony)
+# ==============================================================================
+
+message("Merging and integrating samples...")
+merged_samples <- merge(processed_samples, 
+                        y = processed_samples[2:length(processed_samples)],
+                        add.cell.ids = names(processed_samples))
+
+# Re-normalize merged object
+merged_samples <- SCTransform(merged_samples, assay = "Spatial", vst.flavor = "v2", verbose = FALSE)
+
+# Dimensionality reduction and batch correction
+merged_samples <- RunPCA(merged_samples, verbose = FALSE)
+merged_samples <- RunHarmony(merged_samples, group.by.vars = "sample_id", assay.use = "SCT", verbose = FALSE)
+
+# Clustering
+merged_samples <- FindNeighbors(merged_samples, reduction = "harmony", dims = 1:30)
+merged_samples <- FindClusters(merged_samples, resolution = 0.5)
+merged_samples <- RunUMAP(merged_samples, reduction = "harmony", dims = 1:30)
+
+# ==============================================================================
+# 4. Cell Type Enrichment Scoring
+# ==============================================================================
+
+gastric_markers <- list(
+  "Epithelial" = c("EPCAM", "CDH1", "KRT8", "KRT18", "KRT19"),
+  "Stromal_Fibroblast" = c("COL1A1", "COL1A2", "FAP", "ACTA2", "VIM"),
+  "Endothelial" = c("PECAM1", "VWF", "CDH5", "ENG"),
+  "Immune_T" = c("CD3D", "CD3E", "CD8A", "CD4"),
+  "Immune_B" = c("CD19", "CD79A", "MS4A1"),
+  "Immune_Myeloid" = c("CD68", "CD14", "FCGR3A", "LYZ"),
+  "Tumor" = c("MKI67", "PCNA", "TOP2A", "MUC1")
+)
+
+for(cell_type in names(gastric_markers)) {
+  markers <- gastric_markers[[cell_type]]
+  markers <- markers[markers %in% rownames(merged_samples)]
+  
+  if(length(markers) > 0) {
+    merged_samples <- AddModuleScore(merged_samples, features = list(markers), name = cell_type)
+  }
+}
+
+# Assign dominant cell type
+score_cols <- paste0(names(gastric_markers), "1")
+valid_cols <- score_cols[score_cols %in% colnames(merged_samples@meta.data)]
+
+score_matrix <- merged_samples@meta.data[, valid_cols, drop = FALSE]
+colnames(score_matrix) <- gsub("1$", "", colnames(score_matrix))
+merged_samples$enriched_celltype <- colnames(score_matrix)[max.col(score_matrix, ties.method = "first")]
+
+# ==============================================================================
+# 5. Expression Heatmap (Nature Style)
+# ==============================================================================
+
+Idents(merged_samples) <- "sample_id"
+avg_exp <- AverageExpression(merged_samples, features = genes_of_interest, assay = "SCT", slot = "data")$SCT
+
+df_heatmap <- as.data.frame(avg_exp)
+df_heatmap$Gene <- rownames(df_heatmap)
+df_long <- pivot_longer(df_heatmap, cols = -Gene, names_to = "Sample", values_to = "Expression")
+
+morandi_colors <- c("#f5f5f5", "#e8ddd7", "#d4c4b0", "#c4a484", "#b08968", "#9c7a5c", "#8b6f47", "#6b5b47")
+
+p_heatmap <- ggplot(df_long, aes(x = Sample, y = Gene, fill = Expression)) +
+  geom_tile(color = "white", lwd = 0.3) +
+  scale_fill_gradientn(colors = morandi_colors, name = "Average\nExpression") +
+  geom_text(aes(label = sprintf("%.2f", Expression)), color = "#2d3436", size = 3.2, fontface = "bold") +
+  scale_x_discrete(position = "top") +
+  scale_y_discrete(limits = rev(levels(factor(df_long$Gene)))) +
+  labs(title = "Expression Profile of PLAU and ERAP1", subtitle = "Average expression across tissue regions", x = NULL, y = NULL) +
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 11, color = "#636e72", hjust = 0.5),
+    axis.text.x = element_text(angle = 45, hjust = 0, size = 10, face = "bold"),
+    axis.text.y = element_text(size = 12, face = "bold.italic")
+  )
+
+print(p_heatmap)
+
+# ==============================================================================
+# 6. Linear Regression & Spatial Trajectory (LOESS)
+# ==============================================================================
+
+# Extract data for statistics
+df_cor <- FetchData(merged_samples, vars = c("PLAU", "ERAP1", "tumor_region"), layer = "data")
+df_cor_filtered <- df_cor %>% filter(PLAU > 0 | ERAP1 > 0)
+
+# Custom theme
+theme_nature_opt <- function(base_size = 8) { 
+  theme_classic(base_size = base_size) +
+    theme(
+      text = element_text(family = "sans", color = "black"), 
+      plot.title = element_text(size = base_size + 2, face = "bold", hjust = 0.5),
+      axis.title = element_text(size = base_size, face = "bold"),
+      axis.text = element_text(size = base_size, color = "black"),
+      legend.position = "none", 
+      strip.background = element_blank(), 
+      strip.text = element_text(size = base_size, face = "bold.italic")
+    )
+}
+
+# Spatial Trajectory Data Preparation
+pink_purple_blue <- c("Core" = "#EE959E", "In-between" = "#A98FD4", "Edge" = "#74ADD1")
+
+df_trend <- df_cor_filtered %>%
+  mutate(
+    region_num = case_when(tumor_region == "Core" ~ 1, tumor_region == "In-between" ~ 2, tumor_region == "Edge" ~ 3),
+    tumor_region = factor(tumor_region, levels = c("Core", "In-between", "Edge"))
+  ) %>%
+  pivot_longer(cols = c("PLAU", "ERAP1"), names_to = "Gene", values_to = "Expression")
+
+# Calculate Spearman correlation
+spearman_stats <- df_trend %>%
+  group_by(Gene) %>%
+  summarise(
+    r = cor(region_num, Expression, method = "spearman", use = "complete.obs"),
+    p = cor.test(region_num, Expression, method = "spearman", exact = FALSE)$p.value
+  ) %>%
+  mutate(label_text = paste0("Spearman\nR = ", round(r, 2), "\nP ", ifelse(p < 0.001, "< 0.001", paste0("= ", round(p, 3)))))
+
+# Plot Trajectory (Violin + Boxplot + LOESS)
+p_trend <- ggplot(df_trend, aes(x = region_num, y = Expression)) +
+  geom_violin(aes(fill = tumor_region, group = region_num), alpha = 0.5, color = NA, trim = FALSE, width = 0.7) +
+  geom_boxplot(aes(group = region_num), width = 0.1, fill = "white", color = "#333333", outlier.shape = NA, alpha = 0.9, size = 0.3) +
+  geom_smooth(method = "loess", span = 0.9, se = TRUE, color = "#444444", fill = "#444444", alpha = 0.1, linewidth = 0.8) +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 3, color = "#444444") +
+  geom_text(data = spearman_stats, aes(x = 1.5, y = Inf, label = label_text), inherit.aes = FALSE, vjust = 1.2, hjust = 0.5, size = 3.5, fontface = "italic") +
+  facet_wrap(~Gene, scales = "free_y", ncol = 2) +
+  scale_fill_manual(values = pink_purple_blue) + 
+  scale_x_continuous(breaks = c(1, 2, 3), labels = c("Core", "In-between", "Edge")) +
+  labs(title = "Spatial Expression Trajectory", subtitle = "Expression dynamics from Tumor Core to Edge", x = NULL, y = "Normalized Expression") +
+  theme_nature_opt() +
+  theme(
+    panel.grid.major.y = element_line(color = "grey92", linewidth = 0.3),
+    axis.text.x = element_text(size = 11, face = "bold", margin = margin(t = 5)),
+    strip.text = element_text(size = 12, face = "bold.italic")
+  )
+
+print(p_trend)
+message("Analysis complete.")
